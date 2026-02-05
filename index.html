@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>飞行棋大乱斗</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        /* ========== 登录/注册页面 ========== */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .auth-box {
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            width: 350px;
+        }
+
+        .auth-box h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .auth-box input {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+        }
+
+        .auth-box input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+
+        .auth-box button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: 0.3s;
+        }
+
+        .auth-box button:hover {
+            background: #45a049;
+        }
+
+        .auth-box button.secondary {
+            background: #2196F3;
+        }
+
+        .auth-box button.secondary:hover {
+            background: #1976D2;
+        }
+
+        .auth-box .toggle {
+            text-align: center;
+            margin-top: 15px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .auth-box .toggle span {
+            color: #4CAF50;
+            cursor: pointer;
+        }
+
+        .error-msg {
+            color: #ff6b6b;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        /* ========== 游戏页面 ========== */
+        .game-container {
+            display: none;
+            padding: 20px;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        .user-info {
+            font-size: 18px;
+        }
+
+        .header-buttons button {
+            padding: 8px 16px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-history {
+            background: #9C27B0;
+            color: white;
+        }
+
+        .btn-logout {
+            background: #f44336;
+            color: white;
+        }
+
+        .game-main {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ========== 棋盘 ========== */
+        .board-container {
+            position: relative;
+        }
+
+        .board {
+            width: 560px;
+            height: 560px;
+            background: #2d4a3e;
+            border-radius: 10px;
+            position: relative;
+            border: 4px solid #1a2f26;
+        }
+
+        .cell {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            background: #f5f5dc;
+            border: 2px solid #333;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            color: #333;
+        }
+
+        .cell.red { background: #ff6b6b; }
+        .cell.blue { background: #4dabf7; }
+        .cell.green { background: #69db7c; }
+        .cell.yellow { background: #ffd43b; }
+
+        /* 机场区域 */
+        .airport {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .airport-red { background: rgba(255,107,107,0.3); top: 10px; left: 10px; }
+        .airport-blue { background: rgba(77,171,247,0.3); top: 10px; right: 10px; }
+        .airport-green { background: rgba(105,219,124,0.3); bottom: 10px; right: 10px; }
+        .airport-yellow { background: rgba(255,212,59,0.3); bottom: 10px; left: 10px; }
+
+        .airport-slot {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 棋子 */
+        .piece {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: absolute;
+            z-index: 10;
+        }
+
+        .piece:hover {
+            transform: scale(1.2);
+        }
+
+        .piece.movable {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+        }
+
+        .piece-red { background: #e03131; }
+        .piece-blue { background: #1971c2; }
+        .piece-green { background: #2f9e44; }
+        .piece-yellow { background: #e67700; }
+
+        /* ========== 控制面板 ========== */
+        .control-panel {
+            width: 300px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .player-status {
+            margin-bottom: 20px;
+        }
+
+        .player-card {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .player-card.active {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid #4CAF50;
+        }
+
+        .player-card.finished {
+            opacity: 0.5;
+        }
+
+        .player-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .player-name {
+            flex: 1;
+        }
+
+        .player-rank {
+            font-weight: bold;
+            color: #ffd43b;
+        }
+
+        .dice-area {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .dice {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            color: #333;
+            margin: 0 auto 15px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .dice:hover {
+            transform: scale(1.05);
+        }
+
+        .dice.rolling {
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+
+        .btn-roll {
+            padding: 12px 40px;
+            font-size: 18px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn-roll:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .game-log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 13px;
+        }
+
+        .btn-new-game {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* ========== 历史记录弹窗 ========== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            padding: 30px;
+            border-radius: 15px;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .history-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .history-item .date {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+        }
+
+        .history-item .result {
+            margin-top: 8px;
+        }
+
+        /* ========== 游戏结束弹窗 ========== */
+        .game-over-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over-modal.show {
+            display: flex;
+        }
+
+        .game-over-content {
+            background: linear-gradient(135deg, #2d4a3e 0%, #1a2f26 100%);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .game-over-content h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .final-ranking {
+            margin: 20px 0;
+        }
+
+        .rank-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            margin: 5px 0;
+            font-size: 18px;
+        }
+
+        .rank-item .medal {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 登录/注册页面 -->
+    <div class="auth-container" id="authContainer">
+        <div class="auth-box">
+            <h1>🎲 飞行棋大乱斗</h1>
+            <div class="error-msg" id="authError"></div>
+            
+            <div id="loginForm">
+                <input type="text" id="loginUsername" placeholder="用户名">
+                <input type="password" id="loginPassword" placeholder="密码">
+                <button onclick="handleLogin()">登录</button>
+                <div class="toggle">
+                    还没有账号？<span onclick="toggleAuth()">注册</span>
+                </div>
+            </div>
+            
+            <div id="registerForm" style="display: none;">
+                <input type="text" id="regUsername" placeholder="用户名">
+                <input type="password" id="regPassword" placeholder="密码">
+                <button onclick="handleRegister()">注册</button>
+                <div class="toggle">
+                    已有账号？<span onclick="toggleAuth()">登录</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏页面 -->
+    <div class="game-container" id="gameContainer">
+        <div class="game-header">
+            <div class="user-info">
+                👤 欢迎, <span id="displayUsername"></span>
+            </div>
+            <div class="header-buttons">
+                <button class="btn-history" onclick="showHistory()">📜 历史记录</button>
+                <button class="btn-logout" onclick="handleLogout()">退出登录</button>
+            </div>
+        </div>
+
+        <div class="game-main">
+            <div class="board-container">
+                <div class="board" id="board">
+                    <!-- 机场区域 -->
+                    <div class="airport airport-red" id="airport-player"></div>
+                    <div class="airport airport-blue" id="airport-claude"></div>
+                    <div class="airport airport-green" id="airport-gemini"></div>
+                    <div class="airport airport-yellow" id="airport-qwen"></div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="player-status" id="playerStatus">
+                    <!-- 玩家状态卡片 -->
+                </div>
+
+                <div class="dice-area">
+                    <div class="dice" id="dice">🎲</div>
+                    <button class="btn-roll" id="btnRoll" onclick="rollDice()">掷骰子</button>
+                </div>
+
+                <div class="game-log" id="gameLog">
+                    <div class="log-entry">游戏开始！你先手。</div>
+                </div>
+
+                <button class="btn-new-game" onclick="startNewGame()">开始新游戏</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录弹窗 -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📜 对局历史</h3>
+                <button class="modal-close" onclick="closeHistory()">×</button>
+            </div>
+            <div id="historyList"></div>
+        </div>
+    </div>
+
+    <!-- 游戏结束弹窗 -->
+    <div class="game-over-modal" id="gameOverModal">
+        <div class="game-over-content">
+            <h2>🏆 游戏结束！</h2>
+            <div class="final-ranking" id="finalRanking"></div>
+            <button class="btn-new-game" onclick="closeGameOver(); startNewGame();">再来一局</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== 配置 ==========
+        const API_BASE = 'https://flying-chess.onrender.com'; // 改成你的后端地址
+
+        // ========== 游戏状态 ==========
+        let currentUser = null;
+        let gameState = null;
+
+        const PLAYERS = {
+            player: { name: '', color: 'red', isAI: false },
+            claude: { name: 'Claude', color: 'blue', isAI: true, type: 'claude' },
+            gemini: { name: 'Gemini', color: 'green', isAI: true, type: 'gemini' },
+            qwen: { name: '通义千问', color: 'yellow', isAI: true, type: 'qwen' }
+        };
+
+        const PLAYER_ORDER = ['player', 'claude', 'gemini', 'qwen'];
+
+        // 棋盘格子位置（简化版 - 正方形跑道）
+        const TRACK_POSITIONS = [];
+        const TRACK_SIZE = 52;
+
+        // 生成跑道坐标
+        function generateTrackPositions() {
+            const startX = 200, startY = 20;
+            const cellSize = 40;
+            
+            // 上边 (0-12)
+            for (let i = 0; i <= 12; i++) {
+                TRACK_POSITIONS.push({ x: startX + i * cellSize, y: startY });
+            }
+            // 右边 (13-25)
+            for (let i = 1; i <= 13; i++) {
+                TRACK_POSITIONS.push({ x: startX + 12 * cellSize, y: startY + i * cellSize });
+            }
+            // 下边 (26-38)
+            for (let i = 1; i <= 13; i++) {
+                TRACK_POSITIONS.push({ x: startX + 12 * cellSize - i * cellSize, y: startY + 13 * cellSize });
+            }
+            // 左边 (39-51)
+            for (let i = 1; i <= 12; i++) {
+                TRACK_POSITIONS.push({ x: startX - cellSize, y: startY + 13 * cellSize - i * cellSize });
+            }
+        }
+
+        generateTrackPositions();
+
+        // 机场内棋子位置
+        const AIRPORT_POSITIONS = {
+            player: [
+                { x: 30, y: 30 }, { x: 100, y: 30 },
+                { x: 30, y: 100 }, { x: 100, y: 100 }
+            ],
+            claude: [
+                { x: 430, y: 30 }, { x: 500, y: 30 },
+                { x: 430, y: 100 }, { x: 500, y: 100 }
+            ],
+            gemini: [
+                { x: 430, y: 430 }, { x: 500, y: 430 },
+                { x: 430, y: 500 }, { x: 500, y: 500 }
+            ],
+            qwen: [
+                { x: 30, y: 430 }, { x: 100, y: 430 },
+                { x: 30, y: 500 }, { x: 100, y: 500 }
+            ]
+        };
+
+        // 起点位置（每个玩家不同）
+        const START_POSITIONS = {
+            player: 0,
+            claude: 13,
+            gemini: 26,
+            qwen: 39
+        };
+
+        // ========== 登录/注册 ==========
+        function toggleAuth() {
+            const login = document.getElementById('loginForm');
+            const register = document.getElementById('registerForm');
+            login.style.display = login.style.display === 'none' ? 'block' : 'none';
+            register.style.display = register.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('authError').textContent = '';
+        }
+
+        async function handleLogin() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail);
+                }
+
+                currentUser = await res.json();
+                PLAYERS.player.name = currentUser.username;
+                showGame();
+            } catch (e) {
+                document.getElementById('authError').textContent = e.message;
+            }
+        }
+
+        async function handleRegister() {
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+
+            try {
+                const res = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail);
+                }
+
+                currentUser = await res.json();
+                PLAYERS.player.name = currentUser.username;
+                showGame();
+            } catch (e) {
+                document.getElementById('authError').textContent = e.message;
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById('authContainer').style.display = 'flex';
+            document.getElementById('gameContainer').style.display = 'none';
+        }
+
+        function showGame() {
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            document.getElementById('displayUsername').textContent = currentUser.username;
+            startNewGame();
+        }
+
+        // ========== 游戏逻辑 ==========
+        function startNewGame() {
+            gameState = {
+                pieces: {
+                    player: [-1, -1, -1, -1],
+                    claude: [-1, -1, -1, -1],
+                    gemini: [-1, -1, -1, -1],
+                    qwen: [-1, -1, -1, -1]
+                },
+                currentPlayer: 'player',
+                diceValue: null,
+                round: 1,
+                rankings: [],
+                gameOver: false
+            };
+
+            document.getElementById('gameLog').innerHTML = '<div class="log-entry">游戏开始！你先手。</div>';
+            document.getElementById('btnRoll').disabled = false;
+            document.getElementById('dice').textContent = '🎲';
+
+            renderBoard();
+            renderPlayerStatus();
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('board');
+            
+            // 清除旧棋子
+            board.querySelectorAll('.piece').forEach(p => p.remove());
+            board.querySelectorAll('.cell').forEach(c => c.remove());
+
+            // 绘制跑道格子
+            TRACK_POSITIONS.forEach((pos, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.style.left = pos.x + 'px';
+                cell.style.top = pos.y + 'px';
+                cell.textContent = i;
+                board.appendChild(cell);
+            });
+
+            // 绘制棋子
+            for (const playerId of PLAYER_ORDER) {
+                const pieces = gameState.pieces[playerId];
+                const color = PLAYERS[playerId].color;
+
+                pieces.forEach((pos, i) => {
+                    const piece = document.createElement('div');
+                    piece.className = `piece piece-${color}`;
+                    piece.dataset.player = playerId;
+                    piece.dataset.index = i;
+
+                    if (pos === -1) {
+                        // 在机场
+                        const airportPos = AIRPORT_POSITIONS[playerId][i];
+                        piece.style.left = airportPos.x + 'px';
+                        piece.style.top = airportPos.y + 'px';
+                    } else if (pos >= 0 && pos < TRACK_SIZE) {
+                        // 在跑道上
+                        const actualPos = (START_POSITIONS[playerId] + pos) % TRACK_SIZE;
+                        const trackPos = TRACK_POSITIONS[actualPos];
+                        piece.style.left = (trackPos.x + 4) + 'px';
+                        piece.style.top = (trackPos.y + 4) + 'px';
+                    } else {
+                        // 到终点了，隐藏
+                        piece.style.display = 'none';
+                    }
+
+                    // 玩家回合且可移动的棋子
+                    if (playerId === 'player' && gameState.diceValue && !gameState.gameOver) {
+                        const movable = getMovablePieces('player', gameState.diceValue);
+                        if (movable.includes(i)) {
+                            piece.classList.add('movable');
+                            piece.onclick = () => playerMove(i);
+                        }
+                    }
+
+                    board.appendChild(piece);
+                });
+            }
+        }
+
+        function renderPlayerStatus() {
+            const container = document.getElementById('playerStatus');
+            container.innerHTML = '';
+
+            for (const playerId of PLAYER_ORDER) {
+                const player = PLAYERS[playerId];
+                const isActive = gameState.currentPlayer === playerId;
+                const rankIndex = gameState.rankings.indexOf(playerId);
+                const isFinished = rankIndex !== -1;
+
+                const card = document.createElement('div');
+                card.className = `player-card ${isActive ? 'active' : ''} ${isFinished ? 'finished' : ''}`;
+                card.innerHTML = `
+                    <div class="player-icon" style="background: ${getColorCode(player.color)}"></div>
+                    <div class="player-name">${player.name}</div>
+                    ${isFinished ? `<div class="player-rank">#${rankIndex + 1}</div>` : ''}
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function getColorCode(color) {
+            const colors = {
+                red: '#e03131',
+                blue: '#1971c2',
+                green: '#2f9e44',
+                yellow: '#e67700'
+            };
+            return colors[color];
+        }
+
+        function addLog(message) {
+            const log = document.getElementById('gameLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = message;
+            log.insertBefore(entry, log.firstChild);
+        }
+
+        // ========== 骰子 ==========
+        async function rollDice() {
+            if (gameState.gameOver) return;
+
+            const btn = document.getElementById('btnRoll');
+            const dice = document.getElementById('dice');
+
+            btn.disabled = true;
+            dice.classList.add('rolling');
+
+            // 动画
+            await new Promise(r => setTimeout(r, 500));
+
+            const value = Math.floor(Math.random() * 6) + 1;
+            gameState.diceValue = value;
+
+            dice.classList.remove('rolling');
+            dice.textContent = value;
+
+            const playerName = PLAYERS[gameState.currentPlayer].name;
+            addLog(`${playerName} 掷出了 ${value}`);
+
+            if (gameState.currentPlayer === 'player') {
+                handlePlayerTurn();
+            } else {
+                await handleAITurn();
+            }
+        }
+
+        function getMovablePieces(playerId, diceValue) {
+            const pieces = gameState.pieces[playerId];
+            const movable = [];
+
+            pieces.forEach((pos, i) => {
+                if (pos === -1) {
+                    // 在机场，需要6才能起飞
+                    if (diceValue === 6) movable.push(i);
+                } else if (pos >= 0 && pos < TRACK_SIZE) {
+                    // 在跑道上，可以移动
+                    movable.push(i);
+                }
+            });
+
+            return movable;
+        }
+
+        function handlePlayerTurn() {
+            const movable = getMovablePieces('player', gameState.diceValue);
+
+            if (movable.length === 0) {
+                addLog('你没有可移动的棋子');
+                nextTurn();
+            } else {
+                addLog('请点击要移动的棋子');
+                renderBoard();
+            }
+        }
+
+        function playerMove(pieceIndex) {
+            movePiece('player', pieceIndex);
+            renderBoard();
+            checkWin('player');
+            
+            if (!gameState.gameOver) {
+                if (gameState.diceValue === 6) {
+                    addLog('掷出6，再掷一次！');
+                    document.getElementById('btnRoll').disabled = false;
+                    gameState.diceValue = null;
+                } else {
+                    nextTurn();
+                }
+            }
+        }
+
+        async function handleAITurn() {
+            const playerId = gameState.currentPlayer;
+            const movable = getMovablePieces(playerId, gameState.diceValue);
+
+            if (movable.length === 0) {
+                addLog(`${PLAYERS[playerId].name} 没有可移动的棋子`);
+                nextTurn();
+                return;
+            }
+
+            // 调用后端AI
+            try {
+                const res = await fetch(`${API_BASE}/ai-move`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ai_type: PLAYERS[playerId].type,
+                        dice_value: gameState.diceValue,
+                        my_pieces: gameState.pieces[playerId],
+                        all_pieces: gameState.pieces,
+                        movable_indices: movable
+                    })
+                });
+
+                const data = await res.json();
+                const choice = data.choice;
+
+                addLog(`${PLAYERS[playerId].name} 移动了 ${choice} 号棋子`);
+                movePiece(playerId, choice);
+                renderBoard();
+                checkWin(playerId);
+
+            } catch (e) {
+                // AI出错就随机选
+                const choice = movable[Math.floor(Math.random() * movable.length)];
+                addLog(`${PLAYERS[playerId].name} 移动了 ${choice} 号棋子`);
+                movePiece(playerId, choice);
+                renderBoard();
+                checkWin(playerId);
+            }
+
+            if (!gameState.gameOver) {
+                if (gameState.diceValue === 6) {
+                    addLog(`${PLAYERS[playerId].name} 掷出6，再掷一次！`);
+                    await new Promise(r => setTimeout(r, 1000));
+                    await rollDice();
+                } else {
+                    nextTurn();
+                }
+            }
+        }
+
+        function movePiece(playerId, pieceIndex) {
+            const pieces = gameState.pieces[playerId];
+            let pos = pieces[pieceIndex];
+
+            if (pos === -1) {
+                // 起飞
+                pieces[pieceIndex] = 0;
+                addLog(`${PLAYERS[playerId].name} 的棋子起飞了！`);
+            } else {
+                // 移动
+                pos += gameState.diceValue;
+                
+                if (pos >= TRACK_SIZE) {
+                    // 到终点
+                    pieces[pieceIndex] = 999;
+                    addLog(`${PLAYERS[playerId].name} 的一个棋子到达终点！`);
+                } else {
+                    pieces[pieceIndex] = pos;
+                    
+                    // 检查撞子
+                    const actualPos = (START_POSITIONS[playerId] + pos) % TRACK_SIZE;
+                    checkCollision(playerId, actualPos);
+                }
+            }
+        }
+
+        function checkCollision(movingPlayer, actualPos) {
+            for (const playerId of PLAYER_ORDER) {
+                if (playerId === movingPlayer) continue;
+
+                const pieces = gameState.pieces[playerId];
+                pieces.forEach((pos, i) => {
+                    if (pos >= 0 && pos < TRACK_SIZE) {
+                        const otherActualPos = (START_POSITIONS[playerId] + pos) % TRACK_SIZE;
+                        if (otherActualPos === actualPos) {
+                            pieces[i] = -1;
+                            addLog(`${PLAYERS[playerId].name} 的棋子被送回机场！`);
+                        }
+                    }
+                });
+            }
+        }
+
+        function checkWin(playerId) {
+            const pieces = gameState.pieces[playerId];
+            const allFinished = pieces.every(p => p >= TRACK_SIZE);
+
+            if (allFinished && !gameState.rankings.includes(playerId)) {
+                gameState.rankings.push(playerId);
+                addLog(`🎉 ${PLAYERS[playerId].name} 完成了！排名第 ${gameState.rankings.length}`);
+
+                if (gameState.rankings.length >= 4) {
+                    endGame();
+                }
+            }
+        }
+
+        function nextTurn() {
+            gameState.diceValue = null;
+            
+            let nextIndex = (PLAYER_ORDER.indexOf(gameState.currentPlayer) + 1) % 4;
+            
+            // 跳过已完成的玩家
+            while (gameState.rankings.includes(PLAYER_ORDER[nextIndex])) {
+                nextIndex = (nextIndex + 1) % 4;
+            }
+
+            gameState.currentPlayer = PLAYER_ORDER[nextIndex];
+            gameState.round++;
+
+            renderPlayerStatus();
+
+            if (gameState.currentPlayer === 'player') {
+                document.getElementById('btnRoll').disabled = false;
+            } else {
+                // AI自动掷骰子
+                setTimeout(() => rollDice(), 1000);
+            }
+        }
+
+        async function endGame() {
+            gameState.gameOver = true;
+            document.getElementById('btnRoll').disabled = true;
+
+            // 保存记录
+            const result = {};
+            gameState.rankings.forEach((p, i) => {
+                result[`${i + 1}st`] = p === 'player' ? currentUser.username : PLAYERS[p].name;
+            });
+
+            try {
+                await fetch(`${API_BASE}/save-game`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: currentUser.user_id,
+                        result: result,
+                        total_rounds: gameState.round
+                    })
+                });
+            } catch (e) {
+                console.error('保存记录失败', e);
+            }
+
+            // 显示结果
+            showGameOver();
+        }
+
+        function showGameOver() {
+            const modal = document.getElementById('gameOverModal');
+            const ranking = document.getElementById('finalRanking');
+
+            const medals = ['🥇', '🥈', '🥉', '4️⃣'];
+            ranking.innerHTML = gameState.rankings.map((p, i) => {
+                const name = p === 'player' ? currentUser.username : PLAYERS[p].name;
+                return `<div class="rank-item"><span class="medal">${medals[i]}</span> ${name}</div>`;
+            }).join('');
+
+            modal.classList.add('show');
+        }
+
+        function closeGameOver() {
+            document.getElementById('gameOverModal').classList.remove('show');
+        }
+
+        // ========== 历史记录 ==========
+        async function showHistory() {
+            const modal = document.getElementById('historyModal');
+            const list = document.getElementById('historyList');
+
+            try {
+                const res = await fetch(`${API_BASE}/history/${currentUser.user_id}`);
+                const data = await res.json();
+
+                if (data.games.length === 0) {
+                    list.innerHTML = '<p>暂无对局记录</p>';
+                } else {
+                    list.innerHTML = data.games.reverse().map(g => `
+                        <div class="history-item">
+                            <div class="date">${new Date(g.played_at).toLocaleString()}</div>
+                            <div class="result">
+                                🥇 ${g.result['1st']} | 
+                                🥈 ${g.result['2st'] || g.result['2nd']} | 
+                                🥉 ${g.result['3st'] || g.result['3rd']} | 
+                                4️⃣ ${g.result['4st'] || g.result['4th']}
+                            </div>
+                            <div>回合数: ${g.total_rounds}</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                list.innerHTML = '<p>加载失败</p>';
+            }
+
+            modal.classList.add('show');
+        }
+
+        function closeHistory() {
+            document.getElementById('historyModal').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
