@@ -487,6 +487,15 @@
                     已有账号？<span onclick="toggleAuth()">登录</span>
                 </div>
             </div>
+
+            <div class="toggle" style="margin-top: 20px;">
+                <span onclick="toggleBackendSettings()">⚙️ 后端地址设置</span>
+            </div>
+            <div id="backendSettings" style="display: none; margin-top: 10px;">
+                <input type="text" id="backendUrlInput" placeholder="例如: http://localhost:5000">
+                <button onclick="saveBackendUrl()">保存</button>
+                <div style="font-size: 12px; color: #999; margin-top: 6px;" id="backendUrlHint"></div>
+            </div>
         </div>
     </div>
 
@@ -554,7 +563,34 @@
 
     <script>
         // ========== 配置 ==========
-        const API_BASE = 'https://flying-chess.onrender.com'; // 改成你的后端地址
+        const DEFAULT_API_BASE = 'https://flying-chess.onrender.com';
+        let API_BASE = localStorage.getItem('api_base') || DEFAULT_API_BASE;
+
+        function toggleBackendSettings() {
+            const box = document.getElementById('backendSettings');
+            const input = document.getElementById('backendUrlInput');
+            const hint = document.getElementById('backendUrlHint');
+            const showing = box.style.display !== 'none';
+            box.style.display = showing ? 'none' : 'block';
+            if (!showing) {
+                input.value = API_BASE;
+                hint.textContent = '留空并保存可恢复默认线上地址: ' + DEFAULT_API_BASE;
+            }
+        }
+
+        function saveBackendUrl() {
+            const input = document.getElementById('backendUrlInput');
+            const url = input.value.trim().replace(/\/$/, '');
+            if (url) {
+                localStorage.setItem('api_base', url);
+                API_BASE = url;
+            } else {
+                localStorage.removeItem('api_base');
+                API_BASE = DEFAULT_API_BASE;
+            }
+            alert('后端地址已设为: ' + API_BASE + '\n请刷新页面后重新登录。');
+            location.reload();
+        }
 
         // ========== 游戏状态 ==========
         let currentUser = null;
